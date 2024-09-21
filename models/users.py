@@ -1,7 +1,13 @@
 from beanie import Document, Link
 
-from pydantic import EmailStr
+from pydantic import EmailStr, BaseModel
 from models.events import Event
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str
+
 
 class User(Document):
     class Settings:
@@ -9,6 +15,7 @@ class User(Document):
 
     email: EmailStr
     username: str
+    password: str
     events: list[Link[Event]] | None = None
 
     model_config = {
@@ -16,6 +23,8 @@ class User(Document):
             "example": {
                 "email": "fastapi@packt.com",
                 "username": "fastapi",
+                "password": "my-password",
+                "events": ["66ec10e01f81569c77be30a3"]
             }
         }
     }

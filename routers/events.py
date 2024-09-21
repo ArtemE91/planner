@@ -1,8 +1,10 @@
 from beanie import PydanticObjectId
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 
 from database.objects import Database
 from models.events import Event, EventUpdate
+from auth.authenticate import authenticate
+
 
 event_router = APIRouter(tags=["Event"])
 event_database = Database(Event)
@@ -25,13 +27,20 @@ async def retrieve_event(event_id: PydanticObjectId) -> Event:
 
 
 @event_router.post("/")
-async def create_event(body: Event) -> dict:
+async def create_event(body: Event, user: str = Depends(authenticate)) -> dict:
+    body.creator = user
     await event_database.create(body)
     return {"message": "Event created successfully"}
 
 
 @event_router.put("/{event_id}", response_model=Event)
-async def update_event(event_id: PydanticObjectId, body: EventUpdate) -> Event:
+async def update_event(event_id: PydanticObjectId, body: EventUpdate, user: str = Depends(authenticate)) -> Event:
+    event = await event_database.get(event_id)
+    if event.creator != user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Operation not allowed"
+        )
     updated_event = await event_database.update(event_id, body)
     if not updated_event:
         raise HTTPException(
@@ -42,7 +51,13 @@ async def update_event(event_id: PydanticObjectId, body: EventUpdate) -> Event:
 
 
 @event_router.delete("/{event_id}")
-async def delete_event(event_id: PydanticObjectId) -> dict:
+async def delete_event(event_id: PydanticObjectId, user: str = Depends(authenticate)) -> dict:
+    event = await event_database.get(event_id)
+    if event.creator != user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Event not found"
+        )
     event = await event_database.delete(event_id)
     if not event:
         raise HTTPException(
@@ -50,4 +65,3 @@ async def delete_event(event_id: PydanticObjectId) -> dict:
             detail="Event with supplied ID does not exist"
         )
     return {"message": "Event deleted successfully."}
-

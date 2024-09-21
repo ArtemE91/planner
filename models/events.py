@@ -7,6 +7,7 @@ class Event(Document):
     class Settings:
         name = "events"
 
+    creator: str | None = None
     title: str | None = None
     description: str | None = None
     tags: list[str] | None = None
